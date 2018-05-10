@@ -112,9 +112,10 @@ public class WavePainter {
 	private void sendData() {
 		int max = 0;
 		for (int i = 0; i < WIDTH; i++) {
-			if (waveData[i] > max) max = waveData[i];
+			int v = Math.abs(waveData[i] - WIDTH / 2);
+			if (v > max) max = v;
 		}
-		max -= WIDTH / 2;
+		
 		for (int i = 0; i < NSAMPLES; i++) {
 			int x = i * WIDTH / NSAMPLES;
 			byte val = (byte) ((waveData[x] - WIDTH / 2) * 127 / max);
