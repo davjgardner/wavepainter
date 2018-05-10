@@ -105,6 +105,7 @@ int process(jack_nframes_t nframes, void *arg) {
                 }
             }
         }
+        pthread_mutex_unlock(&input_mutex);
     } else {
         // didn't get the lock, output silence
         for (unsigned i = 0; i < nframes; i++) {
@@ -156,15 +157,16 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    unsigned char buf[NSAMPLES];
+    char buf[NSAMPLES];
 
     while (1) {
         // wait for input
         int r = read(0, buf, 1);
         if (r == 1) {
             // ready to recieve
+            printf("recieving...\n");
             int size = 0;
-            unsigned char* into = buf;
+            char* into = buf;
             while (size < NSAMPLES) {
                 r = read(0, into, NSAMPLES - size);
                 if (r > 0) {
@@ -177,9 +179,10 @@ int main(int argc, char **argv) {
                playing while we set the wavetable data */
             pthread_mutex_lock(&input_mutex);
             for (int i = 0; i < NSAMPLES; i++) {
-                wtable[i] = ((sample_t) buf[i]) / 256.0;
+                wtable[i] = ((sample_t) buf[i]) / 127.0;
             }
             pthread_mutex_unlock(&input_mutex);
+            printf("done\n");
         }
     }
 
