@@ -15,6 +15,8 @@ public class WavePainter {
 
 	private int[] waveData = new int[WIDTH];
 	private byte[] data = new byte[NSAMPLES];
+	
+	private Point lastPos = new Point(0, 0);
 
 	private WavePainter() {
 		for (int i = 0; i < WIDTH; i++) {
@@ -30,17 +32,33 @@ public class WavePainter {
 			@Override
 			public void paint(Graphics g) {
 				super.paint(g);
-//				g.setColor(Color.grey);
-//				g.fillRect(0, 0, WIDTH, HEIGHT);
+				/* Apparently, `Graphics` defines its own `WIDTH` and `HEIGHT` variables
+				     so we have to preface ours with `WavePainter.` */
+				// draw a zero line
+				g.setColor(Color.blue);
+				g.drawLine(0, WavePainter.HEIGHT / 2, WavePainter.WIDTH, WavePainter.HEIGHT / 2);
+				// draw the waveform
 				g.setColor(Color.black);
 				for (int i = 0; i < WavePainter.WIDTH - 1; i++) {
 					g.drawLine(i, waveData[i], i + 1, waveData[i + 1]);
-//					System.err.println("drew from (" + (i - 1) + ", " + waveData[i - 1] + ") to (" + i + ", " + waveData[i] + ")");
 				}
 			}
 		};
 
 		MouseInputAdapter mia = new MouseInputAdapter() {
+			
+			@Override
+			public void mousePressed(MouseEvent e) {
+				lastPos.x = e.getX();
+				lastPos.y = e.getY();
+			}
+			
+			@Override
+			public void mouseReleased(MouseEvent e) {
+				lastPos.x = -1;
+				lastPos.y = -1;
+			}
+			
 			@Override
 			public void mouseClicked(MouseEvent e) {
 				int x = e.getX();
@@ -48,8 +66,6 @@ public class WavePainter {
 				if (x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT) {
 					waveData[x] = y;
 				}
-				drawPanel.repaint();
-				drawPanel.repaint();
 			}
 
 			@Override
@@ -58,7 +74,21 @@ public class WavePainter {
 				int y = e.getY();
 				System.err.println("dragged to " + x + ", " + y);
 				if (x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT) {
-					waveData[x] = y;
+					// lerp between the last point we got an event for and this point
+					if (lastPos.x < x) {
+						for (int i = lastPos.x; i <= x; i++) {
+							waveData[i] = lastPos.y + (y - lastPos.y) * (i - lastPos.x) / (x - lastPos.x);
+						}
+					} else if (x < lastPos.x) {
+						for (int i = x; i <= lastPos.x; i++) {
+							waveData[i] = y + (lastPos.y - y) * (i - x) / (lastPos.x - x);
+						}
+					} else {
+						// avoid a divide-by-zero
+						waveData[x] = y;
+					}
+					lastPos.x = x;
+					lastPos.y = y;
 				}
 				drawPanel.repaint();
 			}
