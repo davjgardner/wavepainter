@@ -11,6 +11,6 @@ clean:
 	rm -f *.o synth sendwaves *.class
 run-java: all
 	java WavePainter | ./synth
-run: all
+run-sendwaves: all
 	./sendwaves | ./synth
 .PHONY: all clean
