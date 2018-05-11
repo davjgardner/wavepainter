@@ -1,6 +1,6 @@
 /* synth.c
  *
- * TODO
+ * WavePainter synthesizer application.
  *
  */
 
@@ -22,19 +22,25 @@
 
 typedef jack_default_audio_sample_t sample_t;
 
+// MIDI in
 jack_port_t *input_port;
+// Audio out
 jack_port_t *output_port;
 
+// prevent unsynchronized access to the wavetable data
 pthread_mutex_t input_mutex;
 
+// store currently on MIDI notes
 unsigned char notes[128];
 sample_t ramps[128];
 
+// store some of the steps of a note calculation
 sample_t note_frqs[128];
 
+// wavetable data
 sample_t wtable[NSAMPLES];
 
-// Populate the wavetable with samples
+// Populate the wavetable with initial samples
 void calc_table() {
     for (unsigned i = 0; i < NSAMPLES; i++) {
         // sine wave
@@ -69,6 +75,7 @@ int process(jack_nframes_t nframes, void *arg) {
         jack_nframes_t event_index = 0;
         jack_nframes_t event_count = jack_midi_get_event_count(port_buf);
 
+        // Comment out to disable noisy prints:
         for (unsigned i = 0; i < event_count; i++) {
             jack_midi_event_get(&in_event, port_buf, i);
             unsigned char command = in_event.buffer[0];
@@ -83,8 +90,10 @@ int process(jack_nframes_t nframes, void *arg) {
             }
         }
 
+        // calculate output buffer
         jack_midi_event_get(&in_event, port_buf, 0);
         for (unsigned i = 0; i < nframes; i++) {
+            // process MIDI event
             if ((in_event.time == i) && (event_index < event_count)) {
                 if (in_event.buffer[0] == MIDI_NOTEON) {
                     notes[in_event.buffer[1]] = 1;
@@ -96,6 +105,7 @@ int process(jack_nframes_t nframes, void *arg) {
                     jack_midi_event_get(&in_event, port_buf, event_index);
                 }
             }
+            // sum up all currently on notes
             out[i] = 0.0;
             for (unsigned char n = 0; n < 128; n++) {
                 if (notes[n]) {
@@ -112,8 +122,6 @@ int process(jack_nframes_t nframes, void *arg) {
             out[i] = 0;
         }
     }
-
-
     return 0;
 }
 
@@ -159,8 +167,9 @@ int main(int argc, char **argv) {
 
     char buf[NSAMPLES];
 
+    // process data input
     while (1) {
-        // wait for input
+        // wait for input (until we read the start character)
         int r = read(0, buf, 1);
         if (r == 1) {
             // ready to recieve
@@ -185,7 +194,7 @@ int main(int argc, char **argv) {
             printf("done\n");
         }
     }
-
+    // shouldn't ever get here
     sleep(-1);
     jack_client_close(client);
     exit(0);
